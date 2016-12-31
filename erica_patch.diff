@@ -1,0 +1,1089 @@
+diff --git a/core/java/android/app/Activity.java b/core/java/android/app/Activity.java
+index 9568897..cda5d90 100644
+--- a/core/java/android/app/Activity.java
++++ b/core/java/android/app/Activity.java
+@@ -80,0 +81 @@ import android.view.ContextThemeWrapper;
++import android.view.GestureDetector;
+@@ -682 +683 @@ public class Activity extends ContextThemeWrapper
+-
++
+@@ -686,0 +688,84 @@ public class Activity extends ContextThemeWrapper
++
++    /*
++     * DDDG: Gesture Detectors that detects and log gestures.
++     */
++    private GestureReporter mDddgReporter;
++    private GestureDetector mDddgDetector;
++
++    /*
++     * DDDG: Implements interfaces that receives events from the Activity instance
++     * and logs them to logcat
++     */
++    private static class GestureReporter implements
++        GestureDetector.OnGestureListener,
++        GestureDetector.OnDoubleTapListener {
++
++        private String activityName;
++        private static final String DEBUG_TAG = "DDDG_Gestures";
++
++        public GestureReporter(String activityName) {
++            this.activityName = activityName;
++        }
++
++        @Override
++        public boolean onDown(MotionEvent event) {
++            Log.d(DEBUG_TAG, "down:" + activityName);
++            return true;
++        }
++
++        @Override
++        public boolean onFling(MotionEvent event1, MotionEvent event2,
++                float velocityX, float velocityY) {
++            Log.d(DEBUG_TAG, "fling:" + activityName);
++            return true;
++        }
++
++        @Override
++        public void onLongPress(MotionEvent event) {
++
++            Log.d(DEBUG_TAG, "long_press:" + activityName);
++        }
++
++        @Override
++        public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX,
++                float distanceY) {
++
++            Log.d(DEBUG_TAG, "scroll:" + activityName);
++            return true;
++        }
++
++        @Override
++        public void onShowPress(MotionEvent event) {
++
++            Log.d(DEBUG_TAG, "show_press:" + activityName);
++        }
++
++        @Override
++        public boolean onSingleTapUp(MotionEvent event) {
++
++            Log.d(DEBUG_TAG, "single_tap_up:" + activityName);
++            return true;
++        }
++
++        @Override
++        public boolean onDoubleTap(MotionEvent event) {
++
++            Log.d(DEBUG_TAG, "double_tap:" + activityName);
++            return true;
++        }
++
++        @Override
++        public boolean onDoubleTapEvent(MotionEvent event) {
++
++            Log.d(DEBUG_TAG, "double_tap_event:" + activityName);
++            return true;
++        }
++
++        @Override
++        public boolean onSingleTapConfirmed(MotionEvent event) {
++            Log.d(DEBUG_TAG, "single_tap_confirmed:" + activityName);
++            return true;
++        }
++
++    }
++
+@@ -787 +872 @@ public class Activity extends ContextThemeWrapper
+-
++
+@@ -941,0 +1027,8 @@ public class Activity extends ContextThemeWrapper
++        /*
++         * DDDG: Initializes detectors for gestures for an activity to log gestures
++         * that were not dispatched to any UI elements(View instances) but to the
++         * Activity instance. (See GestureReporter, GestureDetector)
++         */
++        mDddgReporter = new GestureReporter(this.getComponentName().flattenToString());
++        mDddgDetector = new GestureDetector(this, mDddgReporter);
++        mDddgDetector.setOnDoubleTapListener(mDddgReporter);
+@@ -2505,0 +2599,3 @@ public class Activity extends ContextThemeWrapper
++     * DDDG: Registers the onTouchEvent in the mDddgDetector which spits out
++     * the event.
++     *
+@@ -2511,0 +2608 @@ public class Activity extends ContextThemeWrapper
++        this.mDddgDetector.onTouchEvent(event);
+@@ -3744,0 +3842,2 @@ public class Activity extends ContextThemeWrapper
++
++
+@@ -5327 +5425,0 @@ public class Activity extends ContextThemeWrapper
+-
+@@ -5329,0 +5428,10 @@ public class Activity extends ContextThemeWrapper
++
++    /**
++     * DDDG: Used to access Fragment Manager Instance to obtain Active and
++     * Added Fragment Information, dumpActivityAndAdded is a custom method
++     * in the FragmentManager class.
++     * @hide
++     */
++    public void dumpFragments(String prefix, FileDescriptor fd, PrintWriter writer, String[] args) {
++        mFragments.dumpActiveAndAdded(prefix, fd, writer, args);
++    }
+diff --git a/core/java/android/app/ActivityThread.java b/core/java/android/app/ActivityThread.java
+index 8353d54..9821e7b 100644
+--- a/core/java/android/app/ActivityThread.java
++++ b/core/java/android/app/ActivityThread.java
+@@ -927 +927,7 @@ public final class ActivityThread {
+-
++        /*
++         * DDDG: When dumpActivity() is called from the ActivityManagerService,
++         * on the ActivityThread, an async message will be sent onto a queue,
++         * and the ActivityThread class later will handle the message with the method
++         * handleMessage, commands are then identified by constasnts defined
++         * in the H class.
++         */
+@@ -936 +942,21 @@ public final class ActivityThread {
+-                sendMessage(H.DUMP_ACTIVITY, data, 0, 0, true /*async*/);
++                boolean stream = false;
++
++                for (String arg: args) {
++                    if (arg.equals("stream")) {
++                        stream = true;
++                        break;
++                    }
++
++                }
++                /*
++                 * DDDG: If the "stream" argument is used when calling dumpActivity,
++                 * which will be used by the modified methods used by the
++                 * XML service, DUMP_ACTIVITY_UI_STREAM code will be sent with
++                 * the message so to invoke custom method (handleDumpActivityUIStream())
++                 * for required XML to be obtained from the top window
++                 */
++                if (stream) {
++                    sendMessage(H.DUMP_ACTIVITY_UI_STREAM, data, 0, 0, true /*async*/);
++                } else {
++                    sendMessage(H.DUMP_ACTIVITY, data, 0, 0, true /*async*/);
++                }
+@@ -1236,0 +1263 @@ public final class ActivityThread {
++        public static final int DUMP_ACTIVITY_UI_STREAM = 150;
+@@ -1276,0 +1304 @@ public final class ActivityThread {
++                    case DUMP_ACTIVITY_UI_STREAM: return "DUMP_ACTIVITY_UI_STREAM";
+@@ -1300 +1327,0 @@ public final class ActivityThread {
+-
+@@ -1472,0 +1500,3 @@ public final class ActivityThread {
++                case DUMP_ACTIVITY_UI_STREAM:
++                    handleDumpActivityUIStream((DumpComponentInfo)msg.obj);
++                    break;
+@@ -2867,0 +2898,33 @@ public final class ActivityThread {
++    /*
++     * DDDG: When the Activity Thread Asynchronously receives a command to dump
++     * activity with the argument "stream", this method will be called so that
++     * The current top Window's UI Hierarchy will be dumped to the file descriptor
++     * contained in the same arguments in the command. The current root view of
++     * the top Window is obtained by calling the method getCurrentFocusRoot()
++     * of the modified WindowManagerGlobal class.
++     */
++    private void handleDumpActivityUIStream(DumpComponentInfo info) {
++        final StrictMode.ThreadPolicy oldPolicy = StrictMode.allowThreadDiskWrites();
++        try {
++            ActivityClientRecord r = mActivities.get(info.token);
++            if (r != null && r.activity != null) {
++                PrintWriter pw = new FastPrintWriter(new FileOutputStream(
++                        info.fd.getFileDescriptor()));
++                r.activity.dumpFragments(info.prefix, info.fd.getFileDescriptor(), pw, info.args);
++                WindowManagerGlobal wmg = WindowManagerGlobal.getInstance();
++                pw.print("DDDG_Keyboard_Deployed:");
++                pw.println(wmg.isKeyboardDeployed());
++                ViewRootImpl root = wmg.getCurrentFocusRoot();
++                if (root != null) {
++                    root.dumpUIStream("", pw);
++                } else {
++                    pw.println("DDDG_EXTERNAL");
++                }
++                pw.flush();
++            }
++        } finally {
++            IoUtils.closeQuietly(info.fd);
++            StrictMode.setThreadPolicy(oldPolicy);
++        }
++    }
++
+diff --git a/core/java/android/app/Dialog.java b/core/java/android/app/Dialog.java
+index 067073a..b249fca 100644
+--- a/core/java/android/app/Dialog.java
++++ b/core/java/android/app/Dialog.java
+@@ -258,0 +259,2 @@ public class Dialog implements DialogInterface, Window.Callback,
++     *
++     * DDDG: Added logging to Logcat when a Dialog is shown/hidden/dismissed
+@@ -303,0 +306 @@ public class Dialog implements DialogInterface, Window.Callback,
++ Log.d("DDDG", "Dialog shown.");
+@@ -312 +315,3 @@ public class Dialog implements DialogInterface, Window.Callback,
+-        }
++        }
++        Log.d("DDDG", "Dialog hidden.");
++
+@@ -327,0 +333,2 @@ public class Dialog implements DialogInterface, Window.Callback,
++ Log.d("DDDG", "Dialog dismissed.");
++
+diff --git a/core/java/android/app/FragmentManager.java b/core/java/android/app/FragmentManager.java
+index fc761fe..3bdc5c7 100644
+--- a/core/java/android/app/FragmentManager.java
++++ b/core/java/android/app/FragmentManager.java
+@@ -623,0 +624,52 @@ final class FragmentManagerImpl extends FragmentManager implements LayoutInflate
++    /*
++     * DDDG: This method obtains data of Fragments in the UI
++     */
++    public void dumpActiveAndAdded(String prefix, FileDescriptor fd, PrintWriter writer, String[] args) {
++        writer.print("DDDG_Active_Fragments");
++        if (mActive != null) {
++            int N = mActive.size();
++            int count = 0;
++            for (int i=0; i<N; i++) {
++                Fragment f = mActive.get(i);
++                if (f == null) {
++                    continue;
++                }
++                int fragmentId = f.getId();
++                if (fragmentId != 0) {
++                    count++;
++                    writer.print(":");
++                    writer.print(Integer.toHexString(fragmentId));
++                }
++            }
++            if (count > 0) {
++                writer.print("\n");
++            }
++            else {
++                writer.println(":No_Fragments");
++            }
++        } else {
++            writer.println(":No_Fragments");
++        }
++        writer.print("DDDG_Added_Fragments");
++        if (mAdded != null) {
++            int N = mAdded.size();
++            int count = 0;
++            for (int i=0; i<N; i++) {
++                Fragment f = mAdded.get(i);
++                if (f == null) {
++                    continue;
++                }
++                int fragmentId = f.getId();
++                if (fragmentId != 0) {
++                    count++;
++                    writer.print(":");
++                    writer.print(Integer.toHexString(fragmentId));
++                }
++            }
++            if (count > 0) {
++                writer.print("\n");
++                return;
++            }
++        }
++        writer.println(":No_Fragments");
++    }
+diff --git a/core/java/android/view/IWindowManager.aidl b/core/java/android/view/IWindowManager.aidl
+index 7b20e72..642acb9 100644
+--- a/core/java/android/view/IWindowManager.aidl
++++ b/core/java/android/view/IWindowManager.aidl
+@@ -265,0 +266,12 @@ interface IWindowManager
++
++    /**
++     * DDDG: Provides the interface to get the flag of the top window
++     * @hide
++     */
++    int getCurrentFlag();
++
++    /**
++     * DDDG: Provides the interface to check if keyboard is deployed.
++     * @hide
++     */
++    boolean isKeyboardDeployed();
+diff --git a/core/java/android/view/View.java b/core/java/android/view/View.java
+index 3c05872..5662bbc 100644
+--- a/core/java/android/view/View.java
++++ b/core/java/android/view/View.java
+@@ -18,0 +19 @@ package android.view;
++import android.app.Activity;
+@@ -25,0 +27 @@ import android.content.Context;
++import android.content.ContextWrapper;
+@@ -87,0 +90,2 @@ import android.widget.ScrollBarDrawable;
++import android.widget.AdapterView;
++import android.widget.LinearLayout;
+@@ -693,0 +698 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
++
+@@ -701,0 +707,6 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
++     * DDDG: Formats the string for information of the interaction as well
++     * as the UI element
++     * @hide
++     */
++     protected static final String DUMP_CLICK_FORMAT_STRING = "DDDG_Interaction:Type:%s:Pointer:%s:Id:%s:Class:%s:ContentDesc:%s:Bounds:%s:Text:%s:Listener:%s:Activity:%s";
++    /**
+@@ -4247,0 +4259,205 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
++    /**
++     * DDDG: Escaping all Xml Characters in the String for outputing valid
++     * XML
++     * @hide
++     */
++ protected static String escapeXmlChars(CharSequence s) {
++   if (s == null) {
++     return "";
++   }
++     return s.toString().replaceAll("&", "&amp;").replaceAll("\"", "&quot;").replaceAll("\'", "&apos;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
++ }
++ /**
++  * DDDG: Get All Ancestor classes of the current object
++  * @hide
++  */
++ public ArrayList<String> getAncestors() {
++   ArrayList<String> retVal = new ArrayList<String>();
++   Class curClass = this.getClass();
++   Class superclass = curClass.getSuperclass();
++   while (superclass != null) {
++     retVal.add(superclass.getName());
++     curClass = superclass;
++     superclass = curClass.getSuperclass();
++   }
++   return retVal;
++
++ }
++ /**
++  *
++  * DDDG: Outputs all required properties of the View instance (UI element)
++  * as a String in XML format. (This is the entry point for most extra
++  * information required from the UI element)
++  * @hide
++  *
++  */
++ public String toXmlString() {
++   StringBuilder out = new StringBuilder(128);
++   String pName = "";
++     out.append("<node class=\"");
++   out.append(getClass().getName());
++        out.append("\" visibility=\"");
++        switch (mViewFlags&VISIBILITY_MASK) {
++            case VISIBLE: out.append("visible"); break;
++            case INVISIBLE: out.append("invisible"); break;
++            case GONE: out.append("gone"); break;
++            default: break;
++        }
++        out.append("\" visible-to-user=\"");
++        out.append(this.isVisibleToUser() ? "true" : "false");
++        out.append("\" adapter-view=\"");
++        out.append((this instanceof AdapterView) ? "true" : "false");
++   out.append("\" focusable=\"");
++        out.append((mViewFlags&FOCUSABLE_MASK) == FOCUSABLE ? "true" : "false");
++   out.append("\" enabled=\"");
++        out.append((mViewFlags&ENABLED_MASK) == ENABLED ? "true" : "false");
++   out.append("\" draw=\"");
++        out.append((mViewFlags&DRAW_MASK) == WILL_NOT_DRAW ? "true" : "false");
++   out.append("\" scrollable-horizontal=\"");
++        out.append((mViewFlags&SCROLLBARS_HORIZONTAL) != 0 ? "true" : "false");
++   out.append("\" scrollable-vertical=\"");
++        out.append((mViewFlags&SCROLLBARS_VERTICAL) != 0 ? "true" : "false");
++   out.append("\" clickable=\"");
++        out.append((mViewFlags&CLICKABLE) != 0 ? "true" : "false");
++     out.append("\" click-listener-class=\"");
++   OnClickListener l = getListenerInfo().mOnClickListener;
++     if (l != null) {
++         out.append(escapeXmlChars(l.getClass().getName()));
++         out.append("\" click-listener-pointer=\"");
++     out.append(System.identityHashCode(l));
++     } else {
++       out.append("no_listener");
++       out.append("\" click-listener-pointer=\"");
++       out.append("no_listener");
++     }
++   out.append("\" ancestors=\"[");
++   String prefix = "";
++   for (String className : getAncestors()) {
++     out.append(prefix);
++     out.append(className);
++     prefix = ",";
++   }
++
++   out.append("]\" pointer=\"");
++        out.append(Integer.toHexString(System.identityHashCode(this)));
++   if (mLayoutParams != null) {
++     out.append("\" layout-width=\"");
++     out.append(mLayoutParams.width);
++     out.append("\" layout-height=\"");
++     out.append(mLayoutParams.height);
++     if (mLayoutParams instanceof LinearLayout.LayoutParams) {
++       LinearLayout.LayoutParams p = (LinearLayout.LayoutParams) mLayoutParams;
++       out.append("\" layout-gravity=\"");
++       out.append(Integer.toHexString(p.gravity));
++     }
++   }
++   out.append("\" min-height=\"");
++   out.append(mMinHeight);
++   out.append("\" min-width=\"");
++   out.append(mMinWidth);
++   out.append("\" has-background=\"");
++   out.append(Boolean.toString(getBackground() != null));
++   out.append("\" text-alignment=\"");
++   out.append(getTextAlignment());
++   out.append("\" long-clickable=\"");
++        out.append((mViewFlags&LONG_CLICKABLE) != 0 ? "true" : "false");
++        out.append("\" focused=\"");
++        out.append((mPrivateFlags&PFLAG_FOCUSED) != 0 ? "true" : "false");
++   out.append("\" selected=\"");
++        out.append((mPrivateFlags&PFLAG_SELECTED) != 0 ? "true" : "false");
++   out.append("\" pressed=\"");
++        if ((mPrivateFlags&PFLAG_PREPRESSED) != 0) {
++            out.append("prepressed");
++        } else {
++            out.append((mPrivateFlags&PFLAG_PRESSED) != 0 ? "pressed" : "not_pressed");
++        }
++   out.append("\" ");
++   String positionString = "";
++   if (mAttachInfo != null) {
++     positionString = "abs-pos=\"true\" bounds=\"";
++     Rect bounds = mAttachInfo.mTmpInvalRect;
++     getBoundsOnScreen(bounds, true);
++     positionString += ("[" + bounds.left + "," + bounds.top + "][" + bounds.right + "," + bounds.bottom + "]");
++     positionString += "\" rel-bounds=\"";
++     positionString += ("["+ mLeft + "," + mTop + "][" + mRight + "," + mBottom + "]");
++
++   } else {
++     positionString = "abs-pos=\"false\" bounds=\"";
++     positionString += ("["+ mLeft + "," + mTop + "][" + mRight + "," + mBottom + "]");
++   }
++   out.append(positionString);
++   out.append("\" paddings=\"");
++   out.append("["+ getPaddingLeft() + "," + getPaddingRight() + "," + getPaddingTop() + "," + getPaddingBottom() + "," + getPaddingStart() + "," + getPaddingEnd() + "]");
++   if (getBackground() != null && getBackground() instanceof ColorDrawable) {
++     out.append("\" background-color=\"");
++     out.append(Integer.toHexString(((ColorDrawable) getBackground()).getColor()));
++   }
++   out.append("\" elevation=\"");
++   out.append(getElevation());
++   out.append("\" resource-id=\"");
++        final int id = getId();
++        if (id != NO_ID) {
++            final Resources r = mResources;
++            if (Resources.resourceHasPackage(id) && r != null) {
++                try {
++                    String pkgname;
++                    switch (id&0xff000000) {
++                        case 0x01000000:
++                            pkgname="android";
++                            break;
++                        default:
++                            pkgname = r.getResourcePackageName(id);
++                            break;
++                    }
++                    String typename = r.getResourceTypeName(id);
++                    String entryname = r.getResourceEntryName(id);
++                    pName = pkgname;
++                    out.append(pkgname);
++                    out.append(":");
++                    out.append(typename);
++                    out.append("/");
++                    out.append(entryname);
++                } catch (Resources.NotFoundException e) {
++                }
++            }
++        }
++        out.append("\" package=\"" + pName);
++   out.append("\" content-desc=\"" + escapeXmlChars(mContentDescription));
++        out.append("\">");
++        return out.toString();
++ }
++
++ /**
++  * @hide
++  * @return [description]
++  */
++
++ public String getDisplayId() {
++   StringBuilder out = new StringBuilder(128);
++   final int id = getId();
++        if (id != NO_ID) {
++            final Resources r = mResources;
++            if (Resources.resourceHasPackage(id) && r != null) {
++                try {
++                    String pkgname;
++                    switch (id&0xff000000) {
++                        case 0x01000000:
++                            pkgname="android";
++                            break;
++                        default:
++                            pkgname = r.getResourcePackageName(id);
++                            break;
++                    }
++                    String typename = r.getResourceTypeName(id);
++                    String entryname = r.getResourceEntryName(id);
++                    out.append(pkgname);
++                    out.append(":");
++                    out.append(typename);
++                    out.append("/");
++                    out.append(entryname);
++                } catch (Resources.NotFoundException e) {
++                }
++            }
++        }
++        return out.toString();
++   }
+@@ -4249 +4465 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
+-    public String toString() {
++   public String toString() {
+@@ -4322 +4538 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
+-    }
++    }
+@@ -4345 +4560,0 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
+-
+@@ -4347 +4561,0 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
+-
+@@ -4778,0 +4993 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
++            dumpClickEvent("click", true);
+@@ -4782,0 +4998 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
++            dumpClickEvent("click", false);
+@@ -4784,0 +5001 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
++        // DDDG: Dumps the click event first in dumpClickEvent()
+@@ -4817,0 +5035 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
++
+@@ -4818,0 +5037 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
++            dumpClickEvent("long_click", true);
+@@ -4820 +5039,5 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
+-        }
++        } else {
++            dumpClickEvent("long_click", false);
++   }
++   // DDDG: Dumps the Click Event First
++
+@@ -4845,0 +5069,10 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
++
++
++    /**
++     * DDDG: Logs the current click event constructd by getDumpClickString onto the Logcat service
++     * @hide
++     */
++
++    protected void dumpClickEvent(String type, boolean through) {
++     Log.d("DDDG", getDumpClickString(type, through, ""));
++    }
+@@ -4847,0 +5081,28 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
++     * DDDG: Constructs a click event log entry of the current element(any interaction types events, rather,
++     * including scroll). This includes the information of the UI element, including position, pointers etc.
++     * @hide
++     */
++    protected String getDumpClickString(String type, boolean through, String text) {
++     String actName = "not_available";
++     if (getActivity() != null && getActivity().getComponentName() != null) {
++       actName = getActivity().getComponentName().flattenToString();
++     }
++     String formatString = DUMP_CLICK_FORMAT_STRING;
++     String c = "";
++     if (mContentDescription != null) {
++       c = mContentDescription.toString();
++     }
++     String positionString = "";
++     if (mAttachInfo != null) {
++       positionString = "Abs";
++       Rect bounds = mAttachInfo.mTmpInvalRect;
++       getBoundsOnScreen(bounds, true);
++       positionString += ("[" + bounds.left + "," + bounds.top + "][" + bounds.right + "," + bounds.bottom + "]");
++     } else {
++       positionString = "Rel";
++       positionString += ("["+ mLeft + "," + mTop + "][" + mRight + "," + mBottom + "]");
++     }
++     return String.format(formatString, type, Integer.toHexString(System.identityHashCode(this)), this.getDisplayId(), this.getClass().getName(), c, positionString, text, Boolean.toString(through), actName);
++    }
++
++    /**
+@@ -8926,0 +9188,12 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
++    private Activity getActivity() {
++        Context context = getContext();
++        while (context instanceof ContextWrapper) {
++            if (context instanceof Activity) {
++                return (Activity) context;
++            }
++            context = ((ContextWrapper)context).getBaseContext();
++        }
++
++        return null;
++    }
++
+@@ -9859,0 +10133 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
++       dumpClickEvent("scroll", true); // DDDG: Dumps the Event first
+@@ -18439,0 +18714 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
++            dumpClickEvent("drag", true);
+@@ -18441,0 +18717 @@ public class View implements Drawable.Callback, KeyEvent.Callback,
++       dumpClickEvent("drag", false);
+diff --git a/core/java/android/view/ViewRootImpl.java b/core/java/android/view/ViewRootImpl.java
+index e4d82b1..9e5c1fd 100644
+--- a/core/java/android/view/ViewRootImpl.java
++++ b/core/java/android/view/ViewRootImpl.java
+@@ -5391,0 +5392,49 @@ public final class ViewRootImpl implements ViewParent,
++    /**
++     * DDDG: Dumps the UI Hierarchy information by obtaining the info in XML
++     * format while traversing the DOM tree by calling the recursive method
++     * dumpViewHierarchyUI().
++     *
++     * Note: this should mirror dump() method in the same class.
++     * dump() -> dumpUIStream()
++     * dumpViewHierarchy() -> dumpViewHierarchyUI()
++     *
++     * In ActivityThreadClass:
++     * handleDumpActivity() -> handleDumpActivityUIStream()
++     * @hide
++     */
++    public void dumpUIStream(String prefix, PrintWriter writer) {
++        writer.println("<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>");
++        dumpViewHierarchyUI(prefix + " ", writer, mView);
++    }
++
++    /*
++     * DDDG: Private method to recursive traverse the UI hierarchy to obtain
++     * XML information from all elements in the hierarchical strucure.
++     */
++    private void dumpViewHierarchyUI(String prefix, PrintWriter writer, View view) {
++        writer.print(prefix);
++        if (view == null) {
++            writer.println("null");
++            return;
++        }
++        try {
++            writer.println(view.toXmlString());
++        } catch (NullPointerException e) {
++            Log.e("DDDG", "NPE Occurred");
++        }
++        if (!(view instanceof ViewGroup)) {
++            writer.println("</node>");
++            return;
++        }
++        ViewGroup grp = (ViewGroup) view;
++        final int N = grp.getChildCount();
++        if (N < 0) {
++            return;
++        }
++        prefix = prefix + "  ";
++        for (int i = 0; i < N; i++) {
++            dumpViewHierarchyUI(prefix, writer, grp.getChildAt(i));
++        }
++        writer.println("</node>");
++    }
++
+diff --git a/core/java/android/view/WindowManagerGlobal.java b/core/java/android/view/WindowManagerGlobal.java
+index a14c766..3c65fd9 100644
+--- a/core/java/android/view/WindowManagerGlobal.java
++++ b/core/java/android/view/WindowManagerGlobal.java
+@@ -181,0 +182,51 @@ public final class WindowManagerGlobal {
++    /**
++     * DDDG: Provides a reliable and convenient source to determine whether
++     * keyboard is deployed on the current window.
++     * @return true if the keyboard is deployed, false otherwise.
++     */
++    public boolean isKeyboardDeployed() {
++        boolean retVal = false;
++        try {
++            retVal = sWindowManagerService.isKeyboardDeployed();
++        } catch (RemoteException re) {
++            re.printStackTrace();
++        }
++        return retVal;
++    }
++
++    /**
++     * DDDG: Obtains the root UI Element (of ViewRootImpl class) of the current
++     * top window. This method calls the custom getCurrentFlag() from the modified
++     * WindowManagerService class to first obtain the flag of the current top window,
++     * then compares flag with each view roots of all windows.
++     *
++     * @return the ViewRootImpl instance that matches the flag of the current
++     *             top window.
++     */
++    public ViewRootImpl getCurrentFocusRoot() {
++        ViewRootImpl curViewRoot = null;
++        boolean flagSet = false;
++        synchronized (mLock) {
++            int curFlag = -1;
++            try {
++               curFlag = sWindowManagerService.getCurrentFlag();
++            } catch (RemoteException e) {
++                e.printStackTrace();
++            }
++            if (curFlag == -1) {
++                return null;
++            }
++            flagSet = true;
++            if (flagSet) {
++                final int numRoots = mRoots.size();
++                for (int i = 0; i < numRoots; ++i) {
++                    ViewRootImpl ithRoot = mRoots.get(i);
++                    if(ithRoot.mWindowAttributes.flags == curFlag) {
++                        curViewRoot = ithRoot;
++                    }
++                }
++            }
++        }
++        return curViewRoot;
++    }
++
+@@ -510,0 +562,4 @@ public final class WindowManagerGlobal {
++    private static String getWindowNameTitle(ViewRootImpl root) {
++        return root.mWindowAttributes.getTitle().toString();
++    }
++
+diff --git a/core/java/android/widget/TextView.java b/core/java/android/widget/TextView.java
+index 7dc64bd..418cb96 100644
+--- a/core/java/android/widget/TextView.java
++++ b/core/java/android/widget/TextView.java
+@@ -302 +301,0 @@ public class TextView extends View implements ViewTreeObserver.OnPreDrawListener
+-
+@@ -1366,0 +1366 @@ public class TextView extends View implements ViewTreeObserver.OnPreDrawListener
++
+@@ -3688,0 +3689,52 @@ public class TextView extends View implements ViewTreeObserver.OnPreDrawListener
++    /**
++     * DDDG: Logs the current click event constructd by getDumpClickString onto the Logcat service
++     * Adds the text content of the current TextView by overriding the superclass method
++     * @hide
++     */
++    @Override
++    protected void dumpClickEvent(String type, boolean through) {
++        String t = "";
++     if (mText != null) {
++         t = mText.toString();
++     }
++        Log.d("DDDG", getDumpClickString(type, through, t));
++    }
++
++    /**
++     * DDDG: Adds to the toXMLString() method of the superclass View to provide
++     * extra details regarding text, e.g. Hint, Text Size, Font Family etc.
++     *
++     * @hide
++     */
++    @Override
++    public String toXmlString() {
++        Typeface tf = getTypeface();
++        String newXml = super.toXmlString();
++        newXml = newXml.substring(0, newXml.length() - 1);
++
++        StringBuilder sb = new StringBuilder(128);
++   sb.append(" text=\"");
++   sb.append(escapeXmlChars(mText));
++        sb.append("\" text-color=\"");
++        sb.append(Integer.toHexString(getCurrentTextColor()));
++        sb.append("\" text-size=\"");
++        sb.append(Float.toString(getTextSize()));
++
++        if (tf != null) {
++            sb.append("\" font-family=\"");
++           sb.append(escapeXmlChars(tf.getFontFamilyName()));
++         sb.append("\" font-bold=\"");
++         sb.append(Boolean.toString(tf.isBold()));
++         sb.append("\" font-italic=\"");
++         sb.append(Boolean.toString(tf.isItalic()));
++         }
++
++        if (getHint() != null) {
++            sb.append("\" text-hint=\"");
++            sb.append(escapeXmlChars(getHint()));
++        }
++
++        sb.append("\" gravity=\"");
++        sb.append(Integer.toHexString(mGravity));
++        return newXml + sb.toString() + "\">";
++    }
+diff --git a/graphics/java/android/graphics/Typeface.java b/graphics/java/android/graphics/Typeface.java
+index db42314..0fab1b5 100644
+--- a/graphics/java/android/graphics/Typeface.java
++++ b/graphics/java/android/graphics/Typeface.java
+@@ -75,0 +76,5 @@ public class Typeface {
++    /**
++     * DDDG: Stores Font Family name if Typeface is initialized by specifying the font family, not-specified otherwise
++     */
++    private String mFontFamilyName = "default";
++
+@@ -117 +122,3 @@ public class Typeface {
+-            return create(sSystemFontMap.get(familyName), style);
++            Typeface f = create(sSystemFontMap.get(familyName), style);
++            f.mFontFamilyName = familyName;
++            return f;
+@@ -149 +155,0 @@ public class Typeface {
+-
+@@ -152,0 +159,3 @@ public class Typeface {
++                if (family != null) {
++                    typeface.mFontFamilyName = family.mFontFamilyName;
++                }
+@@ -163 +172,8 @@ public class Typeface {
+-
++
++        /*
++         * DDDG: Stores the font family name into the variable mFontFamilyName
++         * if it is supplied in the Constructor of the Typeface
++         */
++     if (family != null) {
++       typeface.mFontFamilyName = family.mFontFamilyName;
++        }
+@@ -374,0 +391,8 @@ public class Typeface {
++
++    /**
++     * DDDG: Get Font Family Name
++     * @hide
++     */
++    public String getFontFamilyName() {
++        return mFontFamilyName;
++    }
+diff --git a/services/core/java/com/android/server/am/ActivityManagerService.java b/services/core/java/com/android/server/am/ActivityManagerService.java
+index 2ab447a..3f901a1 100755
+--- a/services/core/java/com/android/server/am/ActivityManagerService.java
++++ b/services/core/java/com/android/server/am/ActivityManagerService.java
+@@ -218,0 +219 @@ import java.io.FileOutputStream;
++import java.io.InputStream;
+@@ -223,0 +225,3 @@ import java.lang.ref.WeakReference;
++import java.net.ServerSocket;
++import java.net.Socket;
++import java.net.InetSocketAddress;
+@@ -423,0 +428,23 @@ public final class ActivityManagerService extends ActivityManagerNative
++    /*
++     * DDDG: Server Thread that requests UI Hierarchy information from UI elements and
++     * dumps out the information to the client.
++     */
++    static Thread dumpThread = null;
++    /*
++     * DDDG: A flag that is used in the main loop of the server thread and
++     * will be altered by other methods to close the current thread. Shall be
++     * set to false whenever a dumpThread is initialized and started.
++     */
++    volatile static boolean closeThread = false;
++    /*
++     * DDDG: Stores the current top activity obtained from the modified Window
++     * Manager.
++     */
++    volatile ActivityRecord mCurrentTopActivity = null;
++
++    /*
++     * DDDG: A ParcelFileDescriptor that is initialized by the dumpThread Server
++     * which represents the socket that XML will be dumped through.
++     */
++    ParcelFileDescriptor pfd = null;
++
+@@ -12545,0 +12573,7 @@ public final class ActivityManagerService extends ActivityManagerNative
++            } else if ("current-snap".equals(cmd)) {
++                if (dumpThread == null) {
++                    dumpCurrentActivitySnap(fd, pw, args, opti, dumpAll);
++                }
++            } else if ("current-cancel".equals(cmd)) {
++                closeThread = true;
++                dumpThread = null;
+@@ -12602 +12636 @@ public final class ActivityManagerService extends ActivityManagerNative
+-
++
+@@ -13372,0 +13407,112 @@ public final class ActivityManagerService extends ActivityManagerNative
++
++    /*
++     * DDDG: Dumps the XML UI Hierarchy Information of the top window of the top
++     * Activity of the UI when a message is received from a client. More custom
++     * (extremely hacky) methods are used under the dumpActivity method
++     * of the ActivityThread class to obtain the top window out of that certain
++     * top Activity.
++     *
++     * Activity/Window Hierarchy: ActivityStackSupervisor -> Top Activity Stack ->
++     * Top Activity -> Top Window
++     *
++     * When 'a' + <message> is received
++     * from the client, <message> is dumped along with the XML information.
++     *
++     * When 'b' + <message> is received, only the <message> will be output to the LOGCAT, but
++     * not the XML information.
++     *
++     * When 'c' is received, the dumpThread server will be terminated.
++     */
++    protected void dumpCurrentActivitySnap(FileDescriptor fd, PrintWriter pw, String[] args, int opti, boolean dumpAll) {
++        mCurrentTopActivity = mStackSupervisor.getTopStackTopActivity();
++        if (mCurrentTopActivity == null) {
++            pw.println("Error");
++            return;
++        }
++        final FileDescriptor threadFd = fd;
++        final String[] newArgs = new String[args.length - opti];
++        System.arraycopy(args, opti, newArgs, 0, args.length - opti);
++        final PrintWriter threadPw = pw;
++        dumpThread = new Thread(new Runnable() {
++            public void run() {
++                ServerSocket ss = null;
++                PrintWriter out = null;
++                Socket s = null;
++                InputStream in = null;
++                try {
++                    ss = new ServerSocket();
++                    ss.setReuseAddress(true);
++                    ss.bind(new InetSocketAddress(1679));
++                    s = ss.accept();
++                    pfd = ParcelFileDescriptor.fromSocket(s);
++                    in = s.getInputStream();
++                    while (!closeThread) {
++                        String xmlCounter = "Unavailable";
++                        StringBuilder sb = new StringBuilder(50);
++                        boolean direct = false; // if a 'b' is detected in input, output the message to LOGCAT directly
++                        int rb = in.read();
++
++                        if (rb != 97 && rb != 98 && rb != 99)  {
++                            continue;
++                        }
++
++                        if (rb == 99) {
++                            break;
++                        }
++
++                        if (rb == 98) {
++                            direct = true;
++                        }
++
++                 while ((char) rb != '\n') {
++                     sb.append((char) rb);
++                     rb = in.read();
++                 }
++
++                 if (sb.length() > 1) {
++                     xmlCounter = sb.toString().substring(1);
++                 }
++
++                 if (direct) {
++                     Log.d("DDDG", xmlCounter);
++                     continue; // Continue the loop if 'b' is detected and skip UI Hierarchy Dumping
++                 }
++                        Log.d("DDDG", String.format("DDDG_XML_Serial:%s", xmlCounter));
++                        out = new PrintWriter(s.getOutputStream(), true);
++                        mCurrentTopActivity = mStackSupervisor.getTopStackTopActivity();
++                        out.println(String.format("DDDG_XML_Serial:%s", xmlCounter));
++                        out.print("DDDG_Current_Activity:");
++
++                        /*
++                         * DDDG: If no active activity is detected, NO_ACTIVITY
++                         * will be printed and no XML information is available.
++                         *
++                         * Note that some bugs has been observed with this process,
++                         * for example the topmost activity would not work with
++                         * the Android default launcher at times.
++                         */
++                        if (mCurrentTopActivity != null) {
++                          out.println(mCurrentTopActivity.shortComponentName);
++                          dumpActivityUIStream(" ", threadFd, out, mCurrentTopActivity, newArgs, false);
++                          out.flush();
++                        } else {
++                          out.println("NO_ACTIVITY");
++                        }
++                    }
++
++                } catch (IOException e) {
++                    e.printStackTrace();
++                } finally {
++                    try {
++                        pfd.close();
++                        ss.close();
++                        Log.d("DDDG", "DDDG Socket Closed Properly");
++                    } catch (IOException e1) {
++                        e1.printStackTrace();
++                    }
++                }
++            }
++        });
++        closeThread = false;
++        dumpThread.start();
++    }
+@@ -13410,0 +13557,33 @@ public final class ActivityManagerService extends ActivityManagerNative
++    /*
++     * DDDG: Calls the dumpActivity on the ActivityThread with a parameter "stream"
++     * so it calls custom defined method to obtain required XML information from
++     * the Activity.
++     */
++    private void dumpActivityUIStream(String prefix, FileDescriptor fd, PrintWriter pw,
++            final ActivityRecord r, String[] args, boolean dumpAll) {
++        String innerPrefix = prefix + "  ";
++
++        if (r.app != null && r.app.thread != null && pfd != null) {
++            // flush anything that is already in the PrintWriter since the thread is going
++            // to write to the file descriptor directly
++            pw.flush();
++            try {
++                TransferPipe tp = new TransferPipe();
++                FileDescriptor nfd = pfd.getFileDescriptor();
++                String[] newArgs = new String[args.length+1];
++                newArgs[args.length] = "stream";
++                try {
++                    r.app.thread.dumpActivity(tp.getWriteFd().getFileDescriptor(),
++                            r.appToken, innerPrefix, newArgs);
++                    tp.go(nfd);
++                } finally {
++                    tp.kill();
++                }
++            } catch (IOException e) {
++                pw.println(innerPrefix + "Failure while dumping the activity: " + e);
++            } catch (RemoteException e) {
++                pw.println(innerPrefix + "Got a RemoteException while dumping the activity");
++            }
++        }
++    }
++
+diff --git a/services/core/java/com/android/server/am/ActivityStack.java b/services/core/java/com/android/server/am/ActivityStack.java
+index 6497cd7..4459003 100755
+--- a/services/core/java/com/android/server/am/ActivityStack.java
++++ b/services/core/java/com/android/server/am/ActivityStack.java
+@@ -3964,0 +3965,17 @@ final class ActivityStack {
++    /*
++     * DDDG: Gets the ActivityRecord of the activity that is at the top of the stack.
++     * The Activity that is appended last at the stack will appear as the last
++     * element of the list mActivities. And this activity is typically the
++     * current Activity that is used by the user/crawler.
++     */
++    ActivityRecord getCurrentTopActivity() {
++        if (mTaskHistory.size() == 0) {
++            return null;
++        }
++        TaskRecord topTask = mTaskHistory.get(mTaskHistory.size() - 1);
++        if (topTask.mActivities.size() == 0) {
++            return null;
++        }
++        return topTask.mActivities.get(topTask.mActivities.size() - 1);
++    }
++
+diff --git a/services/core/java/com/android/server/am/ActivityStackSupervisor.java b/services/core/java/com/android/server/am/ActivityStackSupervisor.java
+index 32787d8..fe3c69e 100644
+--- a/services/core/java/com/android/server/am/ActivityStackSupervisor.java
++++ b/services/core/java/com/android/server/am/ActivityStackSupervisor.java
+@@ -3174,0 +3175,19 @@ public final class ActivityStackSupervisor implements DisplayListener {
++    /*
++     * DDDG: Gets the stacks of activities and calls the getCurrentTopActivity()
++     * (Curstomly defined) method to obtain the top activity of that stack,
++     * which is typically the current activity that the user/crawler interacts
++     * with.
++     */
++    ActivityRecord getTopStackTopActivity() {
++        if (mActivityDisplays.size() == 0) {
++            return null;
++        }
++        ActivityDisplay activityDisplay = mActivityDisplays.valueAt(0);
++         ArrayList<ActivityStack> stacks = activityDisplay.mStacks;
++        if (stacks.size() == 0) {
++            return null;
++        }
++
++        return stacks.get(stacks.size() - 1).getCurrentTopActivity();
++    }
++
+diff --git a/services/core/java/com/android/server/wm/WindowManagerService.java b/services/core/java/com/android/server/wm/WindowManagerService.java
+index 089d897..4bad8d4 100644
+--- a/services/core/java/com/android/server/wm/WindowManagerService.java
++++ b/services/core/java/com/android/server/wm/WindowManagerService.java
+@@ -3841,0 +3842,17 @@ public class WindowManagerService extends IWindowManager.Stub
++    /**
++     * DDDG: Returns the flag of the currently focused window
++     * @return int flag of the currently focused window within its attributes,
++     *             -1 if the window does not exist.
++     */
++
++    public int getCurrentFlag() {
++        if (mCurrentFocus == null) {
++            return -1;
++        }
++        return mCurrentFocus.mAttrs.flags;
++    }
++
++    public boolean isKeyboardDeployed() {
++        return (mInputMethodWindow != null) ;
++    }
++
+@@ -11034,0 +11052 @@ public class WindowManagerService extends IWindowManager.Stub
++
